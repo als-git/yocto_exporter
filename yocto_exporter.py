@@ -7,7 +7,8 @@
 #     expected to be installed at: /opt/yoctolib_python/Sources
 #
 # commandline arguments:
-#   - just one: debug - this dumps the found sensors on startup
+#   - debug - this dumps the found sensors on startup and continues
+#   - dumpinfo: does just the sensor info dump and then exits
 #
 # It listens on 0.0.0.0:8000/tcp by default.
 #
@@ -101,107 +102,110 @@ yapi_exceptions = p_c.Counter('yapi_exceptions', 'number exceptions from YAPI')
 
 
 def find_and_dump_info():
-  """Finds modules & sensors and does an info dump."""
-  module = y_a.YModule.FirstModule()
-  while module:
-    print('module : %s is a %s ' % (module.get_serialNumber(),
-                                    module.get_productName()))
+    """Finds modules & sensors and does an info dump."""
+    module = y_a.YModule.FirstModule()
+    while module:
+        print('module : %s is a %s ' % (module.get_serialNumber(),
+                                        module.get_productName()))
 
-    module_serial = module.get_serialNumber()
-    module_name = module.get_productName()
-    function_count = module.functionCount()
-    print("module %s:" % module_name)
-    print("            luminosity %s" % module.get_luminosity())
-    print("            current %s mA" % module.get_usbCurrent())
-    print("            hardware id %s" % module.get_hardwareId())
-    print("            friendly name %s" % module.get_friendlyName())
-    print("%s.%s has %s functions" % (module_serial, module_name,
-                                      function_count))
-    for function_id in range(0, function_count):
-      function_type = module.functionType(function_id)
-      function_value = module.functionValue(function_id)
-      print("  %s = %s is %s" % (function_id, function_type, function_value))
+        module_serial = module.get_serialNumber()
+        module_name = module.get_productName()
+        function_count = module.functionCount()
+        print("module %s:" % module_name)
+        print("            luminosity %s" % module.get_luminosity())
+        print("            current %s mA" % module.get_usbCurrent())
+        print("            hardware id %s" % module.get_hardwareId())
+        print("            friendly name %s" % module.get_friendlyName())
+        print("%s.%s has %s functions" % (module_serial, module_name,
+                                          function_count))
+        for function_id in range(0, function_count):
+            function_type = module.functionType(function_id)
+            function_value = module.functionValue(function_id)
+            print("  %s = %s is %s" % (function_id, function_type,
+                                       function_value))
 
-    module = module.nextModule()
+        module = module.nextModule()
 
 
 @request_time.time()
 def collect_gauges():
-  """Find modules & sensors, update gauges from sensor values."""
-  # discover modules
-  start_time = time.time()
-  module = y_a.YModule.FirstModule()
-  while module:
-    # discover module info and update gauges
-    module_name = module.get_friendlyName()
-    hardware_id = '%s.current' % module_name
-    usb_current_value = module.get_usbCurrent()
-    usb_current.labels(hardware_id=hardware_id,
-                       unit='mA').set(usb_current_value)
-    hardware_id = '%s.luminosity' % module_name
-    luminosity_value = module.get_luminosity()
-    luminosity.labels(hardware_id=hardware_id,
-                      unit='%').set(luminosity_value)
+    """Find modules & sensors, update gauges from sensor values."""
+    # discover modules
+    start_time = time.time()
+    module = y_a.YModule.FirstModule()
+    while module:
+        # discover module info and update gauges
+        module_name = module.get_friendlyName()
+        hardware_id = '%s.current' % module_name
+        usb_current_value = module.get_usbCurrent()
+        usb_current.labels(hardware_id=hardware_id,
+                           unit='mA').set(usb_current_value)
+        hardware_id = '%s.luminosity' % module_name
+        luminosity_value = module.get_luminosity()
+        luminosity.labels(hardware_id=hardware_id,
+                          unit='%').set(luminosity_value)
 
-    # iterate over functions
-    function_count = module.functionCount()
-    for function_id in range(1, function_count):  # 0 is datalogger
-      function_type = module.functionType(function_id)
-      if function_type == 'Temperature':
-        hardware_id = '%s.temperature' % module_name
-        temperature_value = module.functionValue(function_id)
-        temperature.labels(hardware_id=hardware_id,
-                           unit='Celsius').set(temperature_value)
-      if function_type == 'Pressure':
-        hardware_id = '%s.pressure' % module_name
-        pressure_value = module.functionValue(function_id)
-        pressure.labels(hardware_id=hardware_id,
-                        unit='mbar').set(pressure_value)
-      if function_type == 'Humidity':
-        hardware_id = '%s.humidity' % module_name
-        humidity_value = module.functionValue(function_id)
-        humidity.labels(hardware_id=hardware_id,
-                        unit='% RH').set(humidity_value)
-      if function_type == 'LightSensor':
-        hardware_id = '%s.light' % module_name
-        light_value = module.functionValue(function_id)
-        light.labels(hardware_id=hardware_id, unit='lux').set(light_value)
+        # iterate over functions
+        function_count = module.functionCount()
+        for function_id in range(1, function_count):  # 0 is datalogger
+            function_type = module.functionType(function_id)
+            if function_type == 'Temperature':
+                hardware_id = '%s.temperature' % module_name
+                temperature_value = module.functionValue(function_id)
+                temperature.labels(hardware_id=hardware_id,
+                                   unit='Celsius').set(temperature_value)
+            if function_type == 'Pressure':
+                hardware_id = '%s.pressure' % module_name
+                pressure_value = module.functionValue(function_id)
+                pressure.labels(hardware_id=hardware_id,
+                                unit='mbar').set(pressure_value)
+            if function_type == 'Humidity':
+                hardware_id = '%s.humidity' % module_name
+                humidity_value = module.functionValue(function_id)
+                humidity.labels(hardware_id=hardware_id,
+                                unit='% RH').set(humidity_value)
+            if function_type == 'LightSensor':
+                hardware_id = '%s.light' % module_name
+                light_value = module.functionValue(function_id)
+                light.labels(hardware_id=hardware_id,
+                             unit='lux').set(light_value)
 
-    module = module.nextModule()
+        module = module.nextModule()
 
-  end_time = time.time()
-  sensor_read_time_value = end_time - start_time
-  sensor_read_time.labels(unit='s').set(sensor_read_time_value)
-  sensor_read_passes.inc()
+    end_time = time.time()
+    sensor_read_time_value = end_time - start_time
+    sensor_read_time.labels(unit='s').set(sensor_read_time_value)
+    sensor_read_passes.inc()
 
 
 def main():
-  """Main entry point."""
-  # Setup the API to use local USB devices
-  errmsg = y_a.YRefParam()
-  if y_a.YAPI.RegisterHub("usb", errmsg) != y_a.YAPI.SUCCESS:
-    sys.exit("RegisterHub error: " + str(errmsg))
+    """Main entry point."""
+    # Setup the API to use local USB devices
+    errmsg = y_a.YRefParam()
+    if y_a.YAPI.RegisterHub("usb", errmsg) != y_a.YAPI.SUCCESS:
+        sys.exit("RegisterHub error: " + str(errmsg))
 
-  time.sleep(2)
+    time.sleep(2)
 
-  if len(sys.argv) > 1:
-    if sys.argv[1] == 'debug':
-      find_and_dump_info()
-    if sys.argv[1] == 'dumpsensors':
-      find_and_dump_info()
-      sys.exit(0)
+    if len(sys.argv) > 1:
+        if sys.argv[1] == 'debug':
+            find_and_dump_info()
+        if sys.argv[1] == 'dumpsensors':
+            find_and_dump_info()
+            sys.exit(0)
 
-  # pre-load exported variables so we have something to show
-  collect_gauges()
-  p_c.start_http_server(HTTP_PORT)
-  print('HTTP server started on port %s, collection loop running.'% HTTP_PORT)
-  while True:
-    time.sleep(5)
-    try:
-      collect_gauges()
-    except y_a.YAPI_Exception:
-      # Catch, count & ignore, those are transients presumable due to USB fun.
-      yapi_exceptions.inc()
+    # pre-load exported variables so we have something to show
+    collect_gauges()
+    p_c.start_http_server(HTTP_PORT)
+    print('HTTP server started on port %s, collection loop running.'% HTTP_PORT)
+    while True:
+        time.sleep(5)
+        try:
+            collect_gauges()
+        except y_a.YAPI_Exception:
+            # Catch, count & ignore, those are transients presumable due to
+            # USB shenanigans.
+            yapi_exceptions.inc()
 
 if __name__ == '__main__':
-  main()
+    main()
