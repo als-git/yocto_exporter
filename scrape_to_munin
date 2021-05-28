@@ -9,7 +9,7 @@
 # the yocto_exporter is much, much faster.
 
 EXPORTER_URL="http://127.0.0.1:8000/"
-SENSORS="humidity light pressure temperature"
+SENSORS="humidity light pressure temperature co2"
 
 # What sensor am I? (derived from executable name)
 sensor=$(basename $0)
@@ -56,8 +56,11 @@ if [ "${1}" = "config" ] ; then
     echo "graph_category environment"
     echo "temperature.label temperature"
   fi
-  if [ $sensor_found -eq 0 ] ; then
-    echo "error: unknown sensor"
+  if [ "${sensor}" == "co2" ] ; then
+    echo "graph_title co2 in ppm"
+    echo "graph_vlabel co2 level"
+    echo "graph_category environment"
+    echo "temperature.label CO2"
   fi
   exit 0
 fi
