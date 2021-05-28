@@ -90,6 +90,7 @@ temperature = p_c.Gauge('temperature', 'air temperature',
                         ['hardware_id', 'unit'])
 humidity = p_c.Gauge('humidity', 'air humidity', ['hardware_id', 'unit'])
 light = p_c.Gauge('light', 'light', ['hardware_id', 'unit'])
+co2 = p_c.Gauge('co2', 'CO2 levels', ['hardware_id', 'unit'])
 
 # exporter state
 sensor_read_time = p_c.Gauge('sensor_read_time',
@@ -169,6 +170,11 @@ def collect_gauges():
                 light_value = module.functionValue(function_id)
                 light.labels(hardware_id=hardware_id,
                              unit='lux').set(light_value)
+            if function_type == 'CarbonDioxide':
+                hardware_id = '%s.co2' % module_name
+                co2_value = module.functionValue(function_id)
+                co2.labels(hardware_id=hardware_id,
+                           unit='ppm').set(co2_value)
 
         module = module.nextModule()
 
