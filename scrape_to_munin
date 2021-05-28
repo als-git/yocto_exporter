@@ -1,0 +1,68 @@
+#!/bin/bash
+#
+# Simple munin module that gets its data by scraping yocto_exporter.
+#
+# Why? The Yocto API is designed for exclusive access, talking to it
+# when someone else is already sitting on the API apparently confuses
+# it. Also, this helps with munin latency: directly extracting the data
+# via the Yocto API tends to take several seconds, but scraping it from
+# the yocto_exporter is much, much faster.
+
+EXPORTER_URL="http://127.0.0.1:8000/"
+SENSORS="humidity light pressure temperature"
+
+# What sensor am I? (derived from executable name)
+sensor=$(basename $0)
+
+# Is the script invoked directly and not via sensor-named symlink?
+if [ "${sensor}" = "scrape_to_munin" ] ; then
+  echo "Do not call me directly, symlink the sensor name to me and call that."
+  echo "Supported sensors: ${SENSORS}"
+  exit 2
+fi
+
+# Is this a sensor we know about?
+echo ${SENSORS}|grep -q ${sensor}
+if [ $? -eq 1 ] ; then
+  echo "error: unknown sensor"
+  exit 1
+fi
+
+# are we asked for sensor config
+
+if [ "${1}" = "config" ] ; then
+  if [ "${sensor}" == "humidity" ] ; then
+    echo "graph_title humidity in %"
+    echo "graph_vlabel humidity"
+    echo "graph_category environment"
+    echo "humidity.label humidity"
+  fi
+  if [ "${sensor}" == "light" ] ; then
+    echo "graph_title light level in Lux"
+    echo "graph_vlabel light level"
+    echo "graph_category environment"
+    echo "light.label light"
+  fi
+  if [ "${sensor}" == "pressure" ] ; then
+    echo "graph_title pressure in millibar"
+    echo "graph_vlabel pressure"
+    echo "graph_category environment"
+    echo "graph_args -l 850"
+    echo "pressure.label pressure"
+  fi
+  if [ "${sensor}" == "temperature" ] ; then
+    echo "graph_title temperature in Celsius"
+    echo "graph_vlabel temperature level"
+    echo "graph_category environment"
+    echo "temperature.label temperature"
+  fi
+  if [ $sensor_found -eq 0 ] ; then
+    echo "error: unknown sensor"
+  fi
+  exit 0
+fi
+
+# If we're here, it's time to go grab some data. If we have multiple matches
+# on the sensor name, we only use the first one.
+value=$(curl -s ${EXPORTER_URL}|grep ^${sensor}{|head -1|cut -d} -f2|awk '{print $1}')
+echo "${sensor}.value ${value}"
