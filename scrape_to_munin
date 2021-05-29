@@ -60,7 +60,7 @@ if [ "${1}" = "config" ] ; then
     echo "graph_title co2 in ppm"
     echo "graph_vlabel co2 level"
     echo "graph_category environment"
-    echo "temperature.label CO2"
+    echo "co2.label CO2"
   fi
   exit 0
 fi
