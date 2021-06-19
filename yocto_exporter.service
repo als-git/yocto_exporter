@@ -6,7 +6,7 @@ StartLimitIntervalSec=0
 Type=simple
 Restart=always
 RestartSec=1
-ExecStart=/opt/YoctoSensors/bin/yocto_exporter
+ExecStart=/opt/YoctoSensors/bin/yocto_exporter > /var/log/yocto_exporter.log
 
 [Install]
 WantedBy=multi-user.target

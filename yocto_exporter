@@ -149,6 +149,7 @@ def collect_gauges():
         # iterate over functions
         function_count = module.functionCount()
         for function_id in range(1, function_count):  # 0 is datalogger
+            # try to sleep 1s after grabbing from each
             function_type = module.functionType(function_id)
             if function_type == 'Temperature':
                 hardware_id = '%s.temperature' % module_name
@@ -175,6 +176,7 @@ def collect_gauges():
                 co2_value = module.functionValue(function_id)
                 co2.labels(hardware_id=hardware_id,
                            unit='ppm').set(co2_value)
+            time.sleep(1)
 
         module = module.nextModule()
 
@@ -186,6 +188,7 @@ def collect_gauges():
 
 def main():
     """Main entry point."""
+    print('yocto_exporter starting up ...')
     # Setup the API to use local USB devices
     errmsg = y_a.YRefParam()
     if y_a.YAPI.RegisterHub("usb", errmsg) != y_a.YAPI.SUCCESS:
