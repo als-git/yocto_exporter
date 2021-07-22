@@ -4,62 +4,8 @@
 # Copyright: Alexander Schreiber <als@thangorodrim.ch>
 # License: Apache License version 2.o (see file LICENSE for details)
 #
-# requirements:
-#   - Python3 Prometheus client library (Debian: python3-prometheus-client)
-#   - YoctoPuce Python libraries: https://www.yoctopuce.com/EN/libraries.php
-#     expected to be installed at: /opt/yoctolib_python/Sources
+# See README for explanations.
 #
-# commandline arguments:
-#   - debug - this dumps the found sensors on startup and continues
-#   - dumpinfo: does just the sensor info dump and then exits
-#
-# It listens on 0.0.0.0:8000/tcp by default.
-#
-# This exporter iterates:
-#   - over all USB connected YoctoPuce sensor modules it finds
-#     - over all sensors connected to the module
-# while ignoring sensor 0, as this is the datalogger which we don't care about.
-#
-# Currently, the following sensor types are supported:
-# - module internal:
-#   - usb_current: USB module current consumption
-#   - luminosity: USB module beacon luminosity
-# - module sensors:
-#   - pressure: ambient air pressure
-#   - temperature: module temperature
-#   - humidity: ambient air humidity
-#   - light: light sensor output
-# - exporter internals
-#   - request_processing_seconds: time spent processing requests
-#   - sensor_read_time: time spent in the last sensor reading loop
-#   - sensor_read_passes: numbers of sensor reading loop iterations
-#   - yapi_exceptions: number of exception from YAPI during sensor read
-#
-# Implementation details:
-# Normally, a Prometheus exporters aquires the data it exports when it is
-# asked for it (while being scraped). There already is (at least) one for
-# the YoctoPuce sensors: https://github.com/brian-maloney/yocto-exporter.git
-# Except .. this approach isn't very stable, as I found. When scraping at a
-# 5s interval, there is a noticeable number of failed scrapes, either because
-# it takes too long to read all the sensors in realtime or because there are
-# transient errors from the YAPI.
-#
-# So this exporter decouples scraping and data collection: After the http
-# server has been started, in an endless loop, every 4s the data collector
-# loop kicks off and updates the exported variables. Exception thrown by
-# the YAPI get noted, counted and then ignored, as they are transients.
-# I'm not entirely sure what causes those (device not found, I/O errors in
-# the USB layer, timeouts during device request), but I suspect USB
-# implementation issues in the sensor modules. I've also seen network
-# errors thrown by the prometheus library code itself. After printing the
-# running status (sensor being queried) on stdout, both errors appeared
-# to go away, so .. fun with threading, as this code is running multi-
-# threaded?
-#
-# If there are sensors missing, then this is due to me not having access
-# to those sensors/modules to test. Happy to extend the sensor/module
-# coverage ...
-
 
 import sys
 import os

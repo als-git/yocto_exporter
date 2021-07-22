@@ -1,0 +1,59 @@
+This is a Prometheus monitoring exporter for the YoctoPuce USB sensors.
+
+The project includes:
+ - yocto_exporter: the actual code
+ - yotco_exporter.service: a systemd unit
+ - scrape_to_munin: a munin sensor that scrapes yocto_exporter
+
+
+requirements:
+  - Python3 Prometheus client library (Debian: python3-prometheus-client)
+  - YoctoPuce Python libraries: https://www.yoctopuce.com/EN/libraries.php
+    expected to be installed at: /opt/yoctolib_python/Sources
+  - systemd, if you have that, install the unit file the usual way,
+    otherwise you need to wrap a suitable init script around it
+
+commandline arguments:
+  - debug - this dumps the found sensors on startup and continues
+  - dumpinfo: does just the sensor info dump and then exits
+
+It listens on 0.0.0.0:8000/tcp by default.
+
+This exporter iterates:
+  - over all USB connected YoctoPuce sensor modules it finds
+    - over all sensors connected to the module
+while ignoring sensor 0, as this is the datalogger which we don't care about.
+
+Currently, the following sensor types are supported:
+- module internal:
+  - usb_current: USB module current consumption
+  - luminosity: USB module beacon luminosity
+- module sensors:
+  - pressure: ambient air pressure
+  - temperature: module temperature
+  - humidity: ambient air humidity
+  - light: light sensor output
+- exporter internals
+  - request_processing_seconds: time spent processing requests
+  - sensor_read_time: time spent in the last sensor reading loop
+  - sensor_read_passes: numbers of sensor reading loop iterations
+  - yapi_exceptions: number of exception from YAPI during sensor read
+
+Implementation details:
+Normally, a Prometheus exporters aquires the data it exports when it is
+asked for it (while being scraped). There already is (at least) one for
+the YoctoPuce sensors: https://github.com/brian-maloney/yocto-exporter.git
+Except .. this approach isn't very stable, as I found. When scraping at a
+5s interval, there is a noticeable number of failed scrapes, either because
+it takes too long to read all the sensors in realtime or because there are
+transient errors from the YAPI.
+
+So this exporter decouples scraping and data collection: After the http
+server has been started, in an endless loop, every 4s the data collector
+loop kicks off and updates the exported variables. Exception thrown by
+the YAPI get noted, counted and then ignored, as they are transients.
+
+If there are sensors missing, then this is due to me not having access
+to those sensors/modules to test. Happy to extend the sensor/module
+coverage ...
+
