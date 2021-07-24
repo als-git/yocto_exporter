@@ -92,7 +92,7 @@ def collect_gauges():
     while module:
         # discover module info and update gauges
         module_name = module.get_friendlyName()
-        print('Querying module: %s' % module_name)
+        print('Querying module: %s' % module_name, flush=True)
         hardware_id = '%s.current' % module_name
         usb_current_value = module.get_usbCurrent()
         usb_current.labels(hardware_id=hardware_id,
