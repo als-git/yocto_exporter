@@ -7,6 +7,7 @@
 # See README for explanations.
 #
 
+import argparse
 import syslog
 import sys
 import os
@@ -21,9 +22,11 @@ import yocto_api as y_a
 # pylint: enable=C0413
 
 
+# Values below are defaults, overrideable by commandline parameters.
 # Our listening port for incoming scrapes.
 HTTP_PORT = 8000
-
+# Bind to this IP
+BIND_IP='0.0.0.0'
 
 # A whole pile of variables for Prometheus to scrape.
 
@@ -53,7 +56,8 @@ sensor_read_time = p_c.Gauge('sensor_read_time',
                              'time spend reading sensors/pass', ['unit'])
 sensor_read_passes = p_c.Counter('sensor_read_passes',
                                  'number of sensor read passes')
-yapi_exceptions = p_c.Counter('yapi_exceptions', 'number exceptions from YAPI')
+yapi_exceptions = p_c.Counter('yapi_exceptions',
+                              'number of exceptions from YAPI')
 
 # pylint: enable=C0103
 
@@ -69,10 +73,10 @@ def find_and_dump_info():
         module_name = module.get_productName()
         function_count = module.functionCount()
         print("module %s:" % module_name)
-        print("            luminosity %s" % module.get_luminosity())
+        print("            beacon_luminosity %s" % module.get_luminosity())
         print("            current %s mA" % module.get_usbCurrent())
-        print("            hardware id %s" % module.get_hardwareId())
-        print("            friendly name %s" % module.get_friendlyName())
+        print("            hardware_id %s" % module.get_hardwareId())
+        print("            friendly_name %s" % module.get_friendlyName())
         print("%s.%s has %s functions" % (module_serial, module_name,
                                           function_count))
         for function_id in range(0, function_count):
@@ -145,8 +149,21 @@ def collect_gauges():
 
 def main():
     """Main entry point."""
-    print('yocto_exporter starting up ...')
-    syslog.syslog('yocto_exporter starting up ...')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', default=HTTP_PORT, type=int,
+                        help='port to bind to (default %s)' % HTTP_PORT)
+    parser.add_argument('--bind_ip', default=BIND_IP,
+                        help='IP to bind to (default %s)' % BIND_IP)
+    parser.add_argument('--dump_sensors', action='store_true', default=False,
+                        help='dump sensor info and exit')
+    parser.add_argument('--debug', action='store_true', default=False,
+                        help='dump sensor info and continue')
+    args = parser.parse_args()
+
+    if not args.dump_sensors:
+      print('yocto_exporter starting up ...')
+      syslog.syslog('yocto_exporter starting up ...')
+
     # Setup the API to use local USB devices
     errmsg = y_a.YRefParam()
     if y_a.YAPI.RegisterHub("usb", errmsg) != y_a.YAPI.SUCCESS:
@@ -155,19 +172,19 @@ def main():
 
     time.sleep(2)
 
-    if len(sys.argv) > 1:
-        if sys.argv[1] == 'debug':
-            find_and_dump_info()
-        if sys.argv[1] == 'dumpsensors':
-            find_and_dump_info()
-            sys.exit(0)
+    if args.debug:
+        find_and_dump_info()
+    if args.dump_sensors:
+        find_and_dump_info()
+        sys.exit(0)
 
     # pre-load exported variables so we have something to show
     collect_gauges()
-    p_c.start_http_server(HTTP_PORT)
-    print('HTTP server started on port %s, collection loop running.'% HTTP_PORT)
-    syslog.syslog('HTTP server started on port %s, collection loop running.'
-                  % HTTP_PORT)
+    p_c.start_http_server(args.port, addr=args.bind_ip)
+    print('HTTP server started on %s:%s, collection loop running.'
+          % (args.bind_ip, args.port))
+    syslog.syslog('HTTP server started on %s:%s, collection loop running.'
+                  % (args.bind_ip, args.port))
     while True:
         time.sleep(5)
         try:
