@@ -7,6 +7,7 @@
 # See README for explanations.
 #
 
+import syslog
 import sys
 import os
 import time
@@ -145,10 +146,12 @@ def collect_gauges():
 def main():
     """Main entry point."""
     print('yocto_exporter starting up ...')
+    syslog.syslog('yocto_exporter starting up ...')
     # Setup the API to use local USB devices
     errmsg = y_a.YRefParam()
     if y_a.YAPI.RegisterHub("usb", errmsg) != y_a.YAPI.SUCCESS:
-        sys.exit("RegisterHub error: " + str(errmsg))
+        syslog.syslog('RegisterHub error: ' + str(errmsg))
+        sys.exit(1)
 
     time.sleep(2)
 
@@ -163,6 +166,8 @@ def main():
     collect_gauges()
     p_c.start_http_server(HTTP_PORT)
     print('HTTP server started on port %s, collection loop running.'% HTTP_PORT)
+    syslog.syslog('HTTP server started on port %s, collection loop running.'
+                  % HTTP_PORT)
     while True:
         time.sleep(5)
         try:
@@ -170,7 +175,25 @@ def main():
         except y_a.YAPI_Exception:
             # Catch, count & ignore, those are transients presumable due to
             # USB shenanigans.
+            syslog.syslog('Caught YAPI exception, trying to restart')
             yapi_exceptions.inc()
+            # try to re-register
+            time.sleep(5)
+            syslog.syslog('unregistering hub')
+            if y_a.YAPI.UnregisterHub("usb", errmsg) != y_a.YAPI.SUCCESS:
+                syslog.syslog('UnregisterHub error: ' + str(errmsg))
+                sys.exit(1)
+            # allow things to settle
+            time.sleep(5)
+            syslog.syslog('registering hub')
+            errmsg = y_a.YRefParam()
+            if y_a.YAPI.RegisterHub("usb", errmsg) != y_a.YAPI.SUCCESS:
+                syslog.syslog('RegisterHub error: ' + str(errmsg))
+                sys.exit(1)
+            time.sleep(5)
+            syslog.syslog('back to regular operations')
+
+
 
 if __name__ == '__main__':
     main()
