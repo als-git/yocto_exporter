@@ -10,8 +10,10 @@ requirements:
   - Python3 Prometheus client library (Debian: python3-prometheus-client)
   - YoctoPuce Python libraries: https://www.yoctopuce.com/EN/libraries.php
     expected to be installed at: /opt/yoctolib_python/Sources
-  - systemd, if you have that, install the unit file the usual way,
-    otherwise you need to wrap a suitable init script around it
+
+automatic startup (install & enable the usual way as required):
+  - systemd unit: yocto_exporter.service
+  - sysvinit init script: yocto_exporter.init
 
 commandline arguments:
 
