@@ -28,6 +28,8 @@ HTTP_PORT = 8000
 # Bind to this IP
 BIND_IP='0.0.0.0'
 
+Log_Sensor_Read = True
+
 # A whole pile of variables for Prometheus to scrape.
 
 # The declarations below are _variables_, not constants, _and_ they
@@ -89,7 +91,7 @@ def find_and_dump_info():
 
 
 @request_time.time()
-def collect_gauges():
+def collect_gauges(sensor_log=False):
     """Find modules & sensors, update gauges from sensor values."""
     # discover modules
     start_time = time.time()
@@ -97,7 +99,8 @@ def collect_gauges():
     while module:
         # discover module info and update gauges
         module_name = module.get_friendlyName()
-        print('Querying module: %s' % module_name, flush=True)
+        if sensor_log:
+          print('Querying module: %s' % module_name, flush=True)
         hardware_id = '%s.current' % module_name
         usb_current_value = module.get_usbCurrent()
         usb_current.labels(hardware_id=hardware_id,
@@ -158,6 +161,8 @@ def main():
                         help='dump sensor info and exit')
     parser.add_argument('--debug', action='store_true', default=False,
                         help='dump sensor info and continue')
+    parser.add_argument('--sensor_log', action='store_true', default=False,
+                        help='log sensor access')
     args = parser.parse_args()
 
     if not args.dump_sensors:
@@ -179,7 +184,7 @@ def main():
         sys.exit(0)
 
     # pre-load exported variables so we have something to show
-    collect_gauges()
+    collect_gauges(sensor_log=args.sensor_log)
     p_c.start_http_server(args.port, addr=args.bind_ip)
     print('HTTP server started on %s:%s, collection loop running.'
           % (args.bind_ip, args.port))
@@ -188,7 +193,7 @@ def main():
     while True:
         time.sleep(5)
         try:
-            collect_gauges()
+            collect_gauges(sensor_log=args.sensor_log)
         except y_a.YAPI_Exception:
             # Catch and restart the hub session. Catch & ignore meant that
             # the afflicted module (always the light sensor) is stuck at the

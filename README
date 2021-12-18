@@ -29,7 +29,7 @@ optional arguments:
   --bind_ip BIND_IP  IP to bind to (default 0.0.0.0)
   --dump_sensors     dump sensor info and exit
   --debug            dump sensor info and continue
-
+  --sensor_log       log sensor access
 
 This exporter iterates:
   - over all USB connected YoctoPuce sensor modules it finds
