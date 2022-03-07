@@ -204,9 +204,7 @@ def main():
             # try to re-register
             time.sleep(5)
             syslog.syslog('unregistering hub')
-            if y_a.YAPI.UnregisterHub("usb", errmsg) != y_a.YAPI.SUCCESS:
-                syslog.syslog('UnregisterHub error: ' + str(errmsg))
-                sys.exit(1)
+            y_a.YAPI.UnregisterHub("usb")
             # allow things to settle
             time.sleep(5)
             syslog.syslog('registering hub')
