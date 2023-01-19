@@ -196,9 +196,12 @@ def main():
             collect_gauges(sensor_log=args.sensor_log)
         except y_a.YAPI_Exception:
             # Catch and restart the hub session. Catch & ignore meant that
-            # the afflicted module (always the light sensor) is stuck at the
-            # last value. Restarting the exporter always fixed it, so
-            # doing the unregister/register should do the same.
+            # the afflicted module (usually the light sensor) is stuck at the
+            # last value. Restarting the exporter always fixed it, and
+            # doing the unregister/register does the same.
+            # These hangups have only been seen with ARM machines (e.g.
+            # some Raspberry Pi boards and some others, I suspect some
+            # funkiness in the host side USB stack.
             syslog.syslog('Caught YAPI exception, trying to restart')
             yapi_exceptions.inc()
             # try to re-register
